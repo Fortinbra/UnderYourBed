@@ -10,6 +10,60 @@ compile_commands.json
 CTestTestfile.cmake
 _deps
 CMakeUserPresets.json
+tools_cache
+work
+
+# Python / virtual environments
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+.env
+
+# Generated lip-sync & audio artifacts (default ignore)
+*.lipsync.json
+*.rhubarb.json
+*.wav
+*.m4a
+*.mp3
+*.flac
+*.ogg
+
+# Allow lyrics / manifests inside bundles while ignoring binary audio
+!pipeline/bundles/**/manifest.json
+!pipeline/bundles/**/*.txt
+!pipeline/bundles/**/*.lipsync.json
+pipeline/bundles/**/*.wav
+pipeline/bundles/**/*.m4a
+pipeline/bundles/**/*.mp3
+pipeline/bundles/**/*.flac
+pipeline/bundles/**/*.ogg
+
+# Speech / alignment models (large) – keep placeholder docs
+pipeline/models/
+!pipeline/models/.gitkeep
+!pipeline/models/README.md
+
+# Allow a readme in tools cache
+!pipeline/tools_cache/README.md
+
+# Logs
+*.log
+
+# Editor / OS noise
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+
+# Archives / downloads
+*.zip
+*.tar
+*.tar.gz
+*.7z
 
 # CLion
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can

@@ -1,0 +1,27 @@
+{
+  "generatedUtc": "2025-09-04T02:30:16.480725Z",
+  "scriptVersion": "1.0.0",
+  "source": {
+    "type": "youtube",
+    "youtubeUrl": "https://www.youtube.com/watch?v=G-YNNJIe2Vk",
+    "audioInput": null,
+    "wavCopied": true
+  },
+  "parameters": {
+    "fps": 50.0,
+    "aligner": "vosk",
+    "emphasisScale": 1.2,
+    "minOpen": 0.0,
+    "maxOpen": 1.0
+  },
+  "counts": {
+    "frames": 7581,
+    "words": 282
+  },
+  "files": {
+    "output": "song.lipsync.json",
+    "lyrics": "hideandseek.txt",
+    "rhubarbRaw": "rhubarb.raw.json",
+    "wav": "input.wav"
+  }
+}

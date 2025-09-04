@@ -1,0 +1,4 @@
+yt-dlp>=2024.8.6
+# Optional (forced alignment). Install only if using --aligner vosk
+vosk>=0.3.45
+rapidfuzz>=3.9.0
