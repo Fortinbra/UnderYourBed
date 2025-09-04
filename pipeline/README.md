@@ -105,8 +105,9 @@ See `generate_lipsync.py` for an automated pipeline. Key flags:
 --max-open 0.9             Lower ceiling (mechanical safety)
 --emphasis-scale 1.25      Boost frames inside emphasized word spans
 --print-summary            Emit concise JSON summary to stdout
---bundle-root bundles      Create timestamped bundle folder under 'bundles/' storing output + manifest
+ --bundle-root bundles      Create timestamped bundle folder under project root 'bundles/' (kept outside pipeline/) storing output + manifest
 --bundle-include-audio     Also copy 16k mono wav into the bundle (kept gitignored)
+--bundle-include-original  Also copy original source audio (e.g. .m4a) into bundle (gitignored)
 
 Example enriched run:
 
@@ -181,19 +182,21 @@ python generate_lipsync.py `
   --out song.lipsync.json `
   --bundle-root bundles `
   --bundle-include-audio
+  --bundle-include-original
 ```
 
-Result structure (example):
+Result structure (example) when invoked from within pipeline/ with `--bundle-root bundles` (bundles placed at repo root):
 
 ```text
-pipeline/
-  bundles/
-    G-YNNJIe2Vk_20250903-201530/
-      song.lipsync.json
-      manifest.json
-      hideandseek.txt
-      rhubarb.raw.json
-      input.wav (optional if included)
+bundles/
+  G-YNNJIe2Vk_20250903-201530/
+    song.lipsync.json
+    manifest.json
+    hideandseek.txt
+    rhubarb.raw.json
+    input.wav (optional if included)
 ```
 
 `manifest.json` captures parameters, counts, and file references for reproducibility.
+
+Note: Any relative path passed to `--bundle-root` is resolved relative to the repository root (parent of `pipeline/`) so that archives do not clutter the pipeline folder. Provide an absolute path if you need a custom location elsewhere.

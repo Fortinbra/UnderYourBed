@@ -180,8 +180,16 @@ def main():
     ap.add_argument("--aligner", choices=["none","heuristic","vosk"], default="heuristic", help="Word alignment strategy when lyrics provided.")
     ap.add_argument("--vosk-model", help="Path to a Vosk model directory (if using --aligner vosk).")
     ap.add_argument("--bundle-root", help="If set, create a bundle folder under this root with output, lyrics copy, manifest.")
-    ap.add_argument("--bundle-include-audio", action="store_true", help="Include converted WAV inside bundle (audio remains gitignored).")
+    ap.add_argument("--bundle-include-audio", action="store_true", help="Include converted 16k mono WAV inside bundle (analysis audio, gitignored).")
+    ap.add_argument("--bundle-include-original", action="store_true", help="Include original source audio (e.g. .m4a/.mp3) inside bundle for high-quality playback.")
     args = ap.parse_args()
+
+    # Resolve project root (parent of this script's directory). We intentionally
+    # treat any relative --bundle-root as relative to the project root (one
+    # level above the 'pipeline' folder) so bundles are stored outside the
+    # pipeline working directory, keeping the pipeline folder clean.
+    script_dir = Path(__file__).resolve().parent
+    project_root = script_dir.parent
 
     work = Path(args.work)
     work.mkdir(parents=True, exist_ok=True)
@@ -198,9 +206,11 @@ def main():
 
     if args.youtube:
         downloaded = download_youtube(args.youtube, work)
+        original_audio = downloaded
         wav = ensure_wav(downloaded, work, args.ffmpeg)
     else:
-        wav = ensure_wav(Path(args.audio), work, args.ffmpeg)
+        original_audio = Path(args.audio)
+        wav = ensure_wav(original_audio, work, args.ffmpeg)
 
     if args.download_only:
         # Write a tiny manifest pointing to WAV for traceability
@@ -338,6 +348,9 @@ def main():
     if args.bundle_root:
         try:
             root = Path(args.bundle_root)
+            if not root.is_absolute():
+                # Place relative bundle roots at the project root (outside pipeline)
+                root = project_root / root
             root.mkdir(parents=True, exist_ok=True)
             # Slug
             if args.youtube:
@@ -375,6 +388,7 @@ def main():
                 shutil.copy2(rhubarb_raw_src, rhubarb_raw_target)
                 rhubarb_raw_rel = rhubarb_raw_target.name
             wav_rel = None
+            original_rel = None
             if args.bundle_include_audio:
                 try:
                     wav_target = bundle_dir / Path(wav).name
@@ -382,6 +396,17 @@ def main():
                     wav_rel = wav_target.name
                 except Exception as ce:
                     print(f"WARNING: Failed to copy wav into bundle: {ce}")
+            if args.bundle_include_original:
+                try:
+                    # Avoid duplicate copy if original == wav
+                    if Path(original_audio).resolve() != Path(wav).resolve():
+                        orig_target = bundle_dir / f"original{Path(original_audio).suffix.lower()}"
+                        shutil.copy2(original_audio, orig_target)
+                        original_rel = orig_target.name
+                    else:
+                        original_rel = Path(wav).name
+                except Exception as oe:
+                    print(f"WARNING: Failed to copy original audio into bundle: {oe}")
             manifest = {
                 "generatedUtc": datetime.datetime.utcnow().isoformat() + 'Z',
                 "scriptVersion": SCRIPT_VERSION,
@@ -389,6 +414,7 @@ def main():
                     "type": "youtube" if args.youtube else "file",
                     "youtubeUrl": args.youtube,
                     "audioInput": args.audio,
+                    "originalIncluded": bool(original_rel),
                     "wavCopied": bool(wav_rel),
                 },
                 "parameters": {
@@ -407,6 +433,7 @@ def main():
                     "lyrics": lyrics_rel,
                     "rhubarbRaw": rhubarb_raw_rel,
                     "wav": wav_rel,
+                    "original": original_rel,
                 }
             }
             (bundle_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))

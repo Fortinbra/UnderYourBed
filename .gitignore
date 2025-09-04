@@ -31,15 +31,20 @@ env/
 *.flac
 *.ogg
 
-# Allow lyrics / manifests inside bundles while ignoring binary audio
-!pipeline/bundles/**/manifest.json
-!pipeline/bundles/**/*.txt
-!pipeline/bundles/**/*.lipsync.json
-pipeline/bundles/**/*.wav
-pipeline/bundles/**/*.m4a
-pipeline/bundles/**/*.mp3
-pipeline/bundles/**/*.flac
-pipeline/bundles/**/*.ogg
+# Bundles (now created at repo root via --bundle-root). We want bundles tracked
+# except large/binary audio assets. Global patterns still ignore *.lipsync.json,
+# so we re-allow those inside bundles.
+!bundles/**/manifest.json
+!bundles/**/*.txt
+!bundles/**/*.lipsync.json
+!bundles/**/rhubarb.raw.json
+!bundles/**/*.json
+bundles/**/*.wav
+bundles/**/*.m4a
+bundles/**/*.mp3
+bundles/**/*.flac
+bundles/**/*.ogg
+bundles/**/original.*
 
 # Speech / alignment models (large) – keep placeholder docs
 pipeline/models/

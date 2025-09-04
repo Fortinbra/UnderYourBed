@@ -73,148 +73,82 @@ Write-Host "Note: Ensure ffmpeg is installed (winget install Gyan.FFmpeg or choc
 if (-not $SkipRhubarb) {
   New-Item -ItemType Directory -Path $ToolsDir -Force | Out-Null
   $RhubarbExe = Join-Path $ToolsDir "rhubarb.exe"
-  if (-not (Test-Path $RhubarbExe)) {
-    # Build candidate URL list if user did not supply explicit URL
-    $candidateUrls = @()
-    if ($RhubarbUrl) {
-      $candidateUrls += $RhubarbUrl
-    } else {
-      # Build version tokens (e.g., 1.14.0 and 1.14) to handle differing tag naming
-      $verFull = $RhubarbVersion
-      $verShort = if ($RhubarbVersion -match '^([0-9]+\.[0-9]+)\.0$') { $Matches[1] } else { $RhubarbVersion }
-      foreach ($ver in @($verFull, $verShort) | Select-Object -Unique) {
-        $base = "https://github.com/DanielSWolf/rhubarb-lip-sync/releases/download/v$ver";
-        # Include historical lowercase patterns and new capitalized naming (e.g. Rhubarb-Lip-Sync-1.14.0-Windows.zip)
-        $candidateUrls += @(
-          "$base/Rhubarb-Lip-Sync-$ver-Windows.zip",
-          "$base/rhubarb-lip-sync-$ver-win64.zip",
-          "$base/rhubarb-lip-sync-$ver-win.zip",
-          "$base/rhubarb-lip-sync-$ver-win32.zip"
-        )
-      }
-    }
 
-  # Final fallback: if rhubarb.exe exists but res still missing, try to locate any res folder within tools_cache
-  $finalExe = Join-Path $ToolsDir 'rhubarb.exe'
-  $expectedRes = Join-Path $ToolsDir 'res'
-  if (Test-Path $finalExe -and -not (Test-Path $expectedRes)) {
-    Write-Host "Attempting fallback resource discovery..." -ForegroundColor Yellow
-    $dictMatch = Get-ChildItem $ToolsDir -Recurse -Filter 'cmudict-en-us.dict' -ErrorAction SilentlyContinue | Select-Object -First 1
-    if ($dictMatch) {
-      $candidateRes = (Split-Path (Split-Path $dictMatch.FullName -Parent) -Parent)
-      # Ensure this folder actually contains sphinx subfolder
-      if (Test-Path (Join-Path $candidateRes 'sphinx')) {
-        Write-Host "Copying discovered resource folder from $candidateRes to $expectedRes" -ForegroundColor Cyan
-        Copy-Item $candidateRes $expectedRes -Recurse -Force
-      }
+  function Get-RhubarbCandidateUrls {
+    param([string]$Version,[string]$OverrideUrl)
+    if ($OverrideUrl) { return @($OverrideUrl) }
+    $verFull = $Version
+    $verShort = if ($Version -match '^([0-9]+\.[0-9]+)\.0$') { $Matches[1] } else { $Version }
+    $urls = @()
+    foreach ($v in @($verFull,$verShort) | Select-Object -Unique) {
+      $base = "https://github.com/DanielSWolf/rhubarb-lip-sync/releases/download/v$v"
+      $urls += @(
+        "$base/Rhubarb-Lip-Sync-$v-Windows.zip",
+        "$base/rhubarb-lip-sync-$v-win64.zip",
+        "$base/rhubarb-lip-sync-$v-win.zip",
+        "$base/rhubarb-lip-sync-$v-win32.zip"
+      )
     }
-    if (-not (Test-Path $expectedRes)) {
-      Write-Host "Rhubarb resources still missing; manual copy required (place 'res' beside rhubarb.exe)." -ForegroundColor Red
-    } else {
-      Write-Host "Rhubarb resources repaired via fallback." -ForegroundColor Green
-    }
+    return $urls
   }
 
+  if (-not (Test-Path $RhubarbExe)) {
+    $candidateUrls = Get-RhubarbCandidateUrls -Version $RhubarbVersion -OverrideUrl $RhubarbUrl
     $downloaded = $false
     $RhubarbZip = Join-Path $ToolsDir "rhubarb.zip"
     foreach ($url in $candidateUrls) {
       Write-Host "Attempting Rhubarb download: $url" -ForegroundColor Cyan
       try {
         Invoke-WebRequest -Uri $url -OutFile $RhubarbZip -UseBasicParsing -ErrorAction Stop
-        $downloaded = $true
-        break
-      } catch {
-        Write-Host "Failed: $($_.Exception.Message)" -ForegroundColor Yellow
-      }
+        $downloaded = $true; break
+      } catch { Write-Host "Failed: $($_.Exception.Message)" -ForegroundColor Yellow }
     }
-    if (-not $downloaded) {
-      Write-Host "Could not download Rhubarb automatically." -ForegroundColor Red
-      Write-Host "Please manually download a Windows release from:" -ForegroundColor Yellow
-      Write-Host "  https://github.com/DanielSWolf/rhubarb-lip-sync/releases" -ForegroundColor Yellow
-      Write-Host "Place rhubarb.exe into: $ToolsDir" -ForegroundColor Yellow
-    } else {
+    if ($downloaded) {
       Write-Host "Extracting Rhubarb..."
-      try {
-        Expand-Archive -Path $RhubarbZip -DestinationPath $ToolsDir -Force
-      } catch {
-        Write-Host "Extraction failed: $($_.Exception.Message)" -ForegroundColor Red
-      }
+      try { Expand-Archive -Path $RhubarbZip -DestinationPath $ToolsDir -Force } catch { Write-Host "Extraction failed: $($_.Exception.Message)" -ForegroundColor Red }
       $found = Get-ChildItem $ToolsDir -Recurse -Filter rhubarb.exe | Select-Object -First 1
       if ($found) {
         Copy-Item $found.FullName $RhubarbExe -Force
-        # Ensure 'res' directory (with sphinx data) is copied next to the exe so relative lookup works
         $parentDir = Split-Path $found.FullName -Parent
         $srcRes = Join-Path $parentDir 'res'
         $destRes = Join-Path $ToolsDir 'res'
-        if (Test-Path $srcRes -and -not (Test-Path $destRes)) {
-          Write-Host "Copying Rhubarb resource folder..."
-          Copy-Item $srcRes $destRes -Recurse -Force
-        }
+  if ((Test-Path $srcRes) -and -not (Test-Path $destRes)) { Copy-Item $srcRes $destRes -Recurse -Force }
       }
       if (Test-Path $RhubarbZip) { Remove-Item $RhubarbZip -Force }
+    } else {
+      Write-Host "Could not download Rhubarb automatically. Manual download required." -ForegroundColor Red
     }
   } else {
     Write-Host "Rhubarb already present at $RhubarbExe"
-    # If exe exists but res folder missing, prompt user
-    $destRes = Join-Path $ToolsDir 'res'
-    if (-not (Test-Path $destRes)) {
-      Write-Host "Rhubarb resources folder missing (expected $destRes). Attempting automatic re-download to restore resources..." -ForegroundColor Yellow
-      # Build candidate URLs again and attempt download solely for resources
-      $candidateUrls = @()
-      if ($RhubarbUrl) {
-        $candidateUrls += $RhubarbUrl
-      } else {
-        $verFull = $RhubarbVersion
-        $verShort = if ($RhubarbVersion -match '^([0-9]+\.[0-9]+)\.0$') { $Matches[1] } else { $RhubarbVersion }
-        foreach ($ver in @($verFull, $verShort) | Select-Object -Unique) {
-          $base = "https://github.com/DanielSWolf/rhubarb-lip-sync/releases/download/v$ver";
-          $candidateUrls += @(
-            "$base/Rhubarb-Lip-Sync-$ver-Windows.zip",
-            "$base/rhubarb-lip-sync-$ver-win64.zip",
-            "$base/rhubarb-lip-sync-$ver-win.zip",
-            "$base/rhubarb-lip-sync-$ver-win32.zip"
-          )
-        }
-      }
-      $downloaded = $false
-      $RhubarbZip = Join-Path $ToolsDir "rhubarb_redownload.zip"
+  }
+
+  # Ensure resources
+  $expectedRes = Join-Path $ToolsDir 'res'
+  if (-not (Test-Path $expectedRes)) {
+    Write-Host "Rhubarb resources missing; attempting discovery..." -ForegroundColor Yellow
+    $dictMatch = Get-ChildItem $ToolsDir -Recurse -Filter 'cmudict-en-us.dict' -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($dictMatch) {
+      $candidateRes = (Split-Path (Split-Path $dictMatch.FullName -Parent) -Parent)
+      if (Test-Path (Join-Path $candidateRes 'sphinx')) { Copy-Item $candidateRes $expectedRes -Recurse -Force }
+    }
+    if (-not (Test-Path $expectedRes)) {
+      Write-Host "Attempting re-download solely for resources..." -ForegroundColor Yellow
+      $candidateUrls = Get-RhubarbCandidateUrls -Version $RhubarbVersion -OverrideUrl $RhubarbUrl
+      $resZip = Join-Path $ToolsDir 'rhubarb_res.zip'
+      $acquired = $false
       foreach ($url in $candidateUrls) {
-        Write-Host "Attempting resource re-download: $url" -ForegroundColor Cyan
-        try {
-          Invoke-WebRequest -Uri $url -OutFile $RhubarbZip -UseBasicParsing -ErrorAction Stop
-          $downloaded = $true
-          break
-        } catch {
-          Write-Host "Failed: $($_.Exception.Message)" -ForegroundColor Yellow
-        }
+        try { Invoke-WebRequest -Uri $url -OutFile $resZip -UseBasicParsing -ErrorAction Stop; $acquired=$true; break } catch { }
       }
-      if ($downloaded) {
+      if ($acquired) {
         try {
-          Expand-Archive -Path $RhubarbZip -DestinationPath $ToolsDir -Force
-          $foundRes = Get-ChildItem $ToolsDir -Recurse -Filter cmudict-en-us.dict | Select-Object -First 1
-          if ($foundRes) {
-            $parentRes = Split-Path (Split-Path $foundRes.FullName -Parent) -Parent
-            if (Test-Path (Join-Path $parentRes 'res')) {
-              $srcRes = Join-Path $parentRes 'res'
-              if (-not (Test-Path $destRes)) {
-                Write-Host "Copying restored resource folder..."
-                Copy-Item $srcRes $destRes -Recurse -Force
-              }
-            }
-          }
-        } catch {
-          Write-Host "Resource extraction failed: $($_.Exception.Message)" -ForegroundColor Red
-        }
-        if (Test-Path $RhubarbZip) { Remove-Item $RhubarbZip -Force }
-      } else {
-        Write-Host "Automatic re-download failed. Please manually copy 'res' next to rhubarb.exe." -ForegroundColor Red
-      }
-      if (-not (Test-Path $destRes)) {
-        Write-Host "Resources still missing. Manual fix required." -ForegroundColor Red
-      } else {
-        Write-Host "Rhubarb resources restored." -ForegroundColor Green
+          Expand-Archive -Path $resZip -DestinationPath $ToolsDir -Force
+          $resFolder = Get-ChildItem $ToolsDir -Recurse -Directory -Filter 'res' | Select-Object -First 1
+          if ($resFolder -and -not (Test-Path $expectedRes)) { Copy-Item $resFolder.FullName $expectedRes -Recurse -Force }
+        } catch { Write-Host "Resource extraction failed: $($_.Exception.Message)" -ForegroundColor Red }
+        if (Test-Path $resZip) { Remove-Item $resZip -Force }
       }
     }
+    if (Test-Path $expectedRes) { Write-Host "Rhubarb resources present." -ForegroundColor Green } else { Write-Host "Resources still missing; manual copy required." -ForegroundColor Red }
   }
 } else {
   Write-Host "Skipping Rhubarb download (per --SkipRhubarb)." -ForegroundColor Yellow

@@ -104,6 +104,31 @@ Ignored: audio binaries (wav/mp3/m4a/flac), downloaded tools (rhubarb), large AS
 - Phoneme smoothing & easing strategies
 - Alternative aligners (MFA integration)
 
+## Runtime Playback (Experimental)
+
+An experimental Python playback script for Raspberry Pi 5 is included at `runtime/playback.py`.
+
+Install on Pi:
+
+```bash
+cd runtime
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements-runtime.txt
+sudo apt-get install -y ffmpeg
+```
+
+Run (assuming a bundled output + copied/converted WAV):
+
+```bash
+python playback.py \
+	--frames ../pipeline/bundles/G-YNNJIe2Vk_YYYYMMDD-HHMMSS/song.lipsync.json \
+	--audio ../pipeline/bundles/G-YNNJIe2Vk_YYYYMMDD-HHMMSS/input.wav \
+	--servo-channel 0 --eyes --aligner vosk
+```
+
+Adjust angles with `--min-angle` / `--max-angle` and fine tune sync via `--audio-delay-ms`.
+
 ## License
 
 See `LICENSE`.
