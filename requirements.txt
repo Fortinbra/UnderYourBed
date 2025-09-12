@@ -1,0 +1,23 @@
+# Animatronic System Requirements
+# ================================
+
+# Core hardware interface libraries
+spidev>=3.5              # SPI communication for OLED displays
+lgpio>=0.2.0.0           # GPIO control for Raspberry Pi
+
+# Servo control (PCA9685)
+adafruit-circuitpython-pca9685>=3.4.0
+adafruit-circuitpython-busdevice>=5.2.0
+
+# Audio playback (optional backends)
+sounddevice>=0.4.0       # Python audio backend
+soundfile>=0.12.0        # Audio file loading
+
+# For examples and utilities
+pathlib2>=2.3.0          # Path handling (Python < 3.4 compatibility)
+
+# System dependencies (install via apt):
+# - ffmpeg (for ffplay audio backend)
+# - python3-dev (for native extensions)
+# - libasound2-dev (for audio)
+# - portaudio19-dev (for sounddevice)
