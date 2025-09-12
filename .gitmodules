@@ -1,0 +1,3 @@
+[submodule "lib/Uncanny_Eyes"]
+	path = lib/Uncanny_Eyes
+	url = https://github.com/adafruit/Uncanny_Eyes
