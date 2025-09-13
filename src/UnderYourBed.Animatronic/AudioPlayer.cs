@@ -65,16 +65,20 @@ public class AudioPlayer : IDisposable
         {
             _cancellationTokenSource = new CancellationTokenSource();
             
-            // Use ffplay to play the audio file
+            // Use ffplay to play the audio file through USB audio device
             var startInfo = new ProcessStartInfo
             {
                 FileName = "ffplay",
-                Arguments = $"-nodisp -autoexit \"{_currentAudioFile}\"",
+                Arguments = $"-nodisp -autoexit -loglevel quiet -af \"aformat=channel_layouts=stereo\" -ac 2 \"{_currentAudioFile}\"",
                 UseShellExecute = false,
                 RedirectStandardOutput = true,
                 RedirectStandardError = true,
                 CreateNoWindow = true
             };
+
+            // Set environment to use USB audio device (card 0)
+            startInfo.Environment["ALSA_AUDIO_DEVICE"] = "hw:0,0";
+            startInfo.Environment["PULSE_AUDIO_DEVICE"] = "alsa_output.usb-C-Media_Electronics_Inc._USB_Audio_Device-00.analog-stereo";
 
             _audioProcess = new Process { StartInfo = startInfo };
             _audioProcess.EnableRaisingEvents = true;
