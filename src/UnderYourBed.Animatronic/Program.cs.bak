@@ -1,0 +1,74 @@
+﻿using UnderYourBed.Animatronic.Audio;
+
+namespace UnderYourBed.Animatronic;
+
+class Program
+{
+    static async Task Main(string[] args)
+    {
+        Console.WriteLine("UnderYourBed Animatronic Audio Test");
+        Console.WriteLine("===================================");
+
+        // Path to the bundle
+        var bundlePath = "/home/fortinbra/UnderYourBed-1/bundles/G-YNNJIe2Vk_20250904-030059";
+        var audioPath = Path.Combine(bundlePath, "original.m4a");
+
+        if (!File.Exists(audioPath))
+        {
+            Console.WriteLine($"Error: Audio file not found at {audioPath}");
+            return;
+        }
+
+        using var audioPlayer = new AudioPlayer();
+        
+        // Set up event handlers
+        audioPlayer.PlaybackStarted += (s, e) => Console.WriteLine("▶️  Playback started");
+        audioPlayer.PlaybackStopped += (s, e) => Console.WriteLine("⏹️  Playback stopped");
+
+        try
+        {
+            Console.WriteLine($"Loading audio file: {Path.GetFileName(audioPath)}");
+            await audioPlayer.LoadAudioFileAsync(audioPath);
+            
+            Console.WriteLine("\nControls:");
+            Console.WriteLine("  [Space] - Play");
+            Console.WriteLine("  [S] - Stop");
+            Console.WriteLine("  [Q] - Quit");
+            Console.WriteLine();
+
+            bool running = true;
+            while (running)
+            {
+                var key = Console.ReadKey(true);
+                
+                switch (key.Key)
+                {
+                    case ConsoleKey.Spacebar:
+                        if (!audioPlayer.IsPlaying)
+                        {
+                            audioPlayer.Play();
+                        }
+                        break;
+                        
+                    case ConsoleKey.S:
+                        audioPlayer.Stop();
+                        break;
+                        
+                    case ConsoleKey.Q:
+                        running = false;
+                        break;
+                }
+                
+                // Show status
+                var status = audioPlayer.IsPlaying ? "Playing" : "Stopped";
+                Console.Write($"\rStatus: {status}    ");
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error: {ex.Message}");
+        }
+
+        Console.WriteLine("\nGoodbye!");
+    }
+}
