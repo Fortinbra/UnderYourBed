@@ -1,22 +1,172 @@
-# UnderYourBed Animatronic System
+# UnderYourBed Animatronic Project
 
-A modular Python library for controlling animatronic systems with synchronized audio, servo movement, and OLED eye displays.
+A synchronized audio-visual animatronic system for Raspberry Pi that combines audio playback with servo-controlled mouth movement using lip-sync data.
 
-## 🎭 Features
+## Features
 
-- **Dual OLED Eye Displays**: Control SSD1351 128x128 RGB displays as animated eyes
-- **Servo Mouth Control**: PCA9685-based servo control for lip-sync animation  
-- **Audio Playback**: Multi-backend audio with precise timing synchronization
-- **Modular Architecture**: Clean, importable modules for each subsystem
-- **Content Pipeline**: Offline lip‑sync generation from YouTube links or local audio
-- **Easy Integration**: Simple high-level API for complete performances
+- 🎵 **High-quality audio playback** through USB audio device
+- 🤖 **Precision servo control** using Adafruit Servo HAT
+- 📊 **Frame-accurate lip sync** from JSON data (50fps)
+- 🔄 **Perfect synchronization** between audio and movement
+- 🧹 **Clean architecture** with proper resource management
 
-## 🔧 Hardware Requirements
+## Quick Start
 
-### Eye Displays
-- 2x SSD1351 OLED displays (128x128 RGB)
-- SPI connection to Raspberry Pi
-- Separate DC/RST pins for dual display support
+### 1. System Setup
+```bash
+# Clone or download this project to your Raspberry Pi
+cd UnderYourBed-1
+
+# Install system dependencies
+./setup_system.sh
+
+# Reboot (required for I2C to work)
+sudo reboot
+```
+
+### 2. Python Environment
+```bash
+# Create and setup Python environment
+./setup_python.sh
+
+# Activate the environment
+source .venv/bin/activate
+```
+
+### 3. Hardware Setup
+Connect your hardware according to [HARDWARE.md](HARDWARE.md):
+- Adafruit Servo HAT with 5V power supply
+- Servo motor on channel 0
+- USB audio device
+
+### 4. Run the Animatronic
+```bash
+# Start the full system
+python main.py
+```
+
+## Project Structure
+
+```
+UnderYourBed-1/
+├── main.py                 # Main application entry point
+├── src/
+│   ├── audio_player.py     # USB audio playback controller
+│   └── servo_controller.py # Servo movement with lip-sync
+├── bundles/                # Audio and lip-sync data
+│   └── G-YNNJIe2Vk_*/
+│       ├── original.m4a    # High-quality audio file
+│       └── song.lipsync.json # Frame-by-frame lip-sync data
+├── requirements-minimal.txt # Python dependencies
+├── setup_system.sh        # System setup script
+├── setup_python.sh        # Python environment setup
+└── HARDWARE.md            # Hardware setup guide
+```
+
+## How It Works
+
+### Audio System
+- Uses `ffmpeg` and `aplay` for high-quality WebM/Opus playback
+- Automatically targets USB audio device (hw:0,0)
+- Non-blocking playback for perfect synchronization
+
+### Servo Control
+- Reads JSON lip-sync data with 0.02-second precision (50fps)
+- Maps mouth opening values (0.0-1.0) to servo angles
+- Thread-safe operation with graceful cleanup
+
+### Synchronization
+- Both audio and servo start simultaneously
+- Frame-accurate timing ensures perfect lip-sync
+- Handles interruption and cleanup gracefully
+
+## Configuration
+
+### Servo Settings
+Edit `main.py` to adjust servo parameters:
+```python
+# Servo channel, angle range, and movement exaggeration
+controller = AnimatronicController(
+    servo_channel=0,    # Servo HAT channel (0-15)
+    min_angle=0,        # Mouth closed position
+    max_angle=90,       # Mouth fully open position
+    exaggeration=1.1    # 10% movement exaggeration for more pronounced motion
+)
+```
+
+### Audio Device
+The system automatically detects USB audio devices. To use a different device:
+1. List devices: `aplay -l`
+2. Modify `usb_device` in `audio_player.py`
+
+## Troubleshooting
+
+### Common Issues
+
+**"No such file or directory" errors**:
+```bash
+# Ensure you're in the project directory
+cd /home/fortinbra/UnderYourBed-1
+source .venv/bin/activate
+```
+
+**Servo not moving**:
+```bash
+# Check I2C connection
+i2cdetect -y 1
+# Should show device at address 0x40
+```
+
+**Audio not playing**:
+```bash
+# Test USB audio device
+aplay -l
+# Test playback
+aplay -D hw:0,0 /usr/share/sounds/alsa/Front_Left.wav
+```
+
+**Permission errors**:
+```bash
+# Ensure user is in required groups
+sudo usermod -a -G i2c,spi,gpio $USER
+# Logout and login again
+```
+
+### Development Mode
+
+For development without hardware:
+- Servo controller runs in simulation mode if HAT not detected
+- Audio player shows error messages but continues
+- Test individual components: `python src/servo_controller.py`
+
+## Technical Details
+
+### Lip-Sync Data Format
+```json
+{
+  "frames": [
+    {
+      "TimeSeconds": 5.76,
+      "MouthOpen01": 0.1
+    }
+  ]
+}
+```
+- **TimeSeconds**: Absolute time from start
+- **MouthOpen01**: Mouth opening ratio (0.0 = closed, 1.0 = fully open)
+
+### Dependencies
+- **System**: PortAudio, FFmpeg, I2C tools, ALSA
+- **Python**: pygame, sounddevice, adafruit-circuitpython-servokit
+- **Hardware**: Raspberry Pi 4+, Adafruit Servo HAT, USB audio device
+
+## Future Expansion
+
+The architecture supports easy addition of:
+- 👀 **SPI OLED displays** for animated eyes
+- 🎭 **Multiple servos** for complex facial expressions
+- 🔊 **Audio effects** and processing
+- 🌐 **Network control** and remote triggering
 
 ### Servo Control
 - Adafruit PCA9685 servo driver board
@@ -139,24 +289,21 @@ UnderYourBed/
 - **`AudioPlayer`**: Multi-backend audio playback
 - **`LipSyncData`**: Lip-sync data loading and processing
 
-### Controller Module (`animatronic.controller`)
-- **`AnimatronicController`**: Complete system orchestration
+## License
 
-## 📖 Examples
+See [LICENSE](LICENSE) file for licensing information.
 
-### Eyes Only Test
-```python
-from animatronic.display import DualEyeController
+## Contributing
 
-eyes = DualEyeController()
-eyes.initialize()
+This project focuses on clean, production-ready code:
+- No test files or development artifacts in main branch
+- Proper error handling and resource cleanup
+- Clear separation of concerns
+- Hardware abstraction for easy testing
 
-# Test colors
-eyes.left_display.fill_screen((0x00, 0xF8))   # Red
-eyes.right_display.fill_screen((0x1F, 0x00))  # Green
+---
 
-# Animate eyeballs
-eyes.draw_eyes((10, 5), (-5, 8), blink_amount=0.0)
+**Hardware Requirements**: See [HARDWARE.md](HARDWARE.md) for complete setup guide.
 
 eyes.close()
 ```
